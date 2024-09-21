@@ -1,0 +1,16 @@
+{
+  "messages": {
+    "game": {
+      "port_bind": "ProtoShift started on port %s",
+      "connect": "Client connected from %s",
+      "disconnect": "Client disconnected from %s"
+    },
+    "status": {
+      "starting": "Starting ProtoShift...",
+	  "game_version": "Game version: %s",
+	  "version": "ProtoShift version: %s-%s",
+      "done": "\u001b[31mProtoShift is FREE software. If you have paid for this, you may have been scammed!\u001b[0m",
+      "error": "An error occurred."
+    }
+  }
+}
