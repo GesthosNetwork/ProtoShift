@@ -3,7 +3,6 @@ package emu.protoshift.server.packet.recv;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
-
 import emu.protoshift.net.packet.BasePacket;
 import emu.protoshift.net.packet.Opcodes;
 import emu.protoshift.net.packet.PacketHandler;
@@ -11,7 +10,6 @@ import emu.protoshift.net.packet.PacketOpcodes;
 import emu.protoshift.server.game.GameSession;
 import emu.protoshift.utils.Crypto;
 import emu.protoshift.utils.Utils;
-
 import javax.crypto.Cipher;
 import java.nio.ByteBuffer;
 
