@@ -1,0 +1,147 @@
+plugins {
+    id 'application'
+    id 'org.jetbrains.kotlin.jvm' version '2.0.20'
+    id 'java'
+    id 'eclipse'
+    id 'idea'
+}
+
+group = 'xyz.protoshifts'
+version = '1.0.1'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation fileTree(dir: 'lib', include: ['*.jar'])
+    implementation 'org.slf4j:slf4j-api:2.0.16'
+    implementation 'ch.qos.logback:logback-core:1.5.7'
+    implementation 'ch.qos.logback:logback-classic:1.5.7'
+    implementation 'org.jline:jline:3.26.3'
+    implementation 'org.jline:jline-terminal-jna:3.26.3'
+    implementation 'net.java.dev.jna:jna:5.14.0'
+    implementation 'io.netty:netty-all:4.1.113.Final'
+    implementation 'com.google.code.gson:gson:2.11.0'
+    implementation 'com.google.protobuf:protobuf-java:3.21.12'
+    implementation 'com.google.protobuf:protobuf-java-util:3.21.12'
+    implementation 'org.reflections:reflections:0.10.2'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib:2.0.20'
+    compileOnly 'org.projectlombok:lombok:1.18.24'
+    annotationProcessor 'org.projectlombok:lombok:1.18.24'
+}
+
+configurations.all {
+    exclude group: 'org.slf4j', module: 'slf4j'
+}
+
+application {
+    mainClass.set('emu.protoshift.ProtoShift')
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src/generated'
+            srcDir 'src/java'
+        }
+    }
+}
+
+idea {
+    module {
+        sourceDirs += file("/proto/new/")
+        sourceDirs += file("/proto/old/")
+    }
+}
+
+eclipse {
+    classpath {
+        file.whenMerged { cp ->
+            cp.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder('src/generated/main/java', null))
+        }
+    }
+}
+
+tasks.javadoc {
+    options.encoding = 'UTF-8'
+    if (JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption('html5', true)
+    }
+}
+
+tasks.withType(Jar) {
+    exclude("main")
+    exclude("*.proto")
+
+    manifest {
+        attributes 'Main-Class': 'emu.protoshift.ProtoShift'
+    }
+
+	archiveFileName.set('protoshift.jar')
+
+    zip64 = true
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    }
+
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+
+    from('src/main/java') {
+        include '*.xml'
+    }
+
+    destinationDirectory.set(file("."))
+}
+
+tasks.register('injectGitHash') {
+    doLast {
+        def gitCommitHash = 'UNKNOWN'
+
+        def generateRandomHash = { ->
+            def chars = '0123456789abcdef'
+            def random = new Random()
+            return (1..7).collect { chars[random.nextInt(chars.length())] }.join('')
+        }
+
+        def gitFolder = new File("${projectDir}/.git")
+        if (gitFolder.exists()) {
+            try {
+                def gitProcess = 'git rev-parse --verify --short HEAD'.execute()
+                gitCommitHash = gitProcess.text.trim()
+            } catch (Exception e) {
+                println "Git not found or error occurred: ${e.message}"
+                gitCommitHash = generateRandomHash()
+            }
+        } else {
+            gitCommitHash = generateRandomHash()
+        }
+
+        def buildConfigTemplate = """
+        package emu.protoshift;
+
+        public final class BuildConfig {
+            public static final String VERSION = "${version}";
+            public static final String GIT_HASH = "${gitCommitHash}";
+        }
+        """
+
+        def buildConfigContent = buildConfigTemplate.replaceAll(/^\s+/, '')
+
+        def buildConfigFile = new File(projectDir, 'src/main/java/emu/protoshift/BuildConfig.java')
+        buildConfigFile.text = buildConfigContent
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.fork = true
+    options.forkOptions.memoryMaximumSize = '5000m'
+    dependsOn tasks.named('injectGitHash')
+}
+
+tasks.compileKotlin {
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
